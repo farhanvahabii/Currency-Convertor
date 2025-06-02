@@ -1,29 +1,62 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { fetchExchangeRates } from "@/lib/fetchExchangeRates";
 
-type CurrencyContextType = {
+interface CurrencyContextProps {
   fromCurrency: string;
   toCurrency: string;
-  amount: number;
+  amount: string; // string to allow manual input
   result: number;
   setFromCurrency: (value: string) => void;
   setToCurrency: (value: string) => void;
-  setAmount: (value: number) => void;
-  setResult: (value: number) => void;
-};
+  setAmount: (value: string) => void;
+}
 
-const CurrencyContext = createContext<CurrencyContextType | undefined>(
-  undefined
-);
+const CurrencyContext = createContext<CurrencyContextProps | null>(null);
 
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   const [fromCurrency, setFromCurrency] = useState("USD");
-  const [toCurrency, setToCurrency] = useState("EUR");
-  const [amount, setAmount] = useState(1);
+  const [toCurrency, setToCurrency] = useState("IRR");
+  const [amount, setAmount] = useState("1");
   const [result, setResult] = useState(0);
+  const [rates, setRates] = useState<Record<string, number>>({});
 
-    return (
+  // Clean input: allow only digits and dot (for decimal)
+  const cleanAmount = (value: string) => value.replace(/[^0-9.]/g, "");
+
+  useEffect(() => {
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      setResult(0);
+      return;
+    }
+    if (fromCurrency === toCurrency) {
+      setResult(Number(amount));
+    } else {
+      const rate = rates[toCurrency] || 1;
+      setResult(Number(amount) * rate);
+    }
+  }, [amount, toCurrency, fromCurrency, rates]);
+
+  useEffect(() => {
+    const getRates = async () => {
+      try {
+        const data = await fetchExchangeRates(fromCurrency);
+        setRates(data);
+      } catch (error) {
+        console.error("Failed to fetch rates:", error);
+      }
+    };
+    getRates();
+  }, [fromCurrency]);
+
+  return (
     <CurrencyContext.Provider
       value={{
         fromCurrency,
@@ -32,8 +65,7 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
         result,
         setFromCurrency,
         setToCurrency,
-        setAmount,
-        setResult
+        setAmount: (val) => setAmount(cleanAmount(val)),
       }}
     >
       {children}
@@ -43,8 +75,7 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
 
 export const useCurrency = () => {
   const context = useContext(CurrencyContext);
-  if (!context) {
-    throw new Error("useCurrency must be used within a CurrencyProvider");
-  }
+  if (!context)
+    throw new Error("useCurrency must be used within CurrencyProvider");
   return context;
 };
