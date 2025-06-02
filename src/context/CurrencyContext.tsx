@@ -12,7 +12,7 @@ import { fetchExchangeRates } from "@/lib/fetchExchangeRates";
 interface CurrencyContextProps {
   fromCurrency: string;
   toCurrency: string;
-  amount: string; // string to allow manual input
+  amount: string; 
   result: number;
   setFromCurrency: (value: string) => void;
   setToCurrency: (value: string) => void;
@@ -28,7 +28,6 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   const [result, setResult] = useState(0);
   const [rates, setRates] = useState<Record<string, number>>({});
 
-  // Clean input: allow only digits and dot (for decimal)
   const cleanAmount = (value: string) => value.replace(/[^0-9.]/g, "");
 
   useEffect(() => {
